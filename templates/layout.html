@@ -30,50 +30,55 @@
                         <a href="/">PerfectPenny</a>
                     </div>
                 </div>
-                <ul class="sidebar-nav">
-                    <li class="sidebar-item">
-                        <a href="#" class="sidebar-link"> <!--User profile layout-->
-                            <i class="lni lni-user"></i>
-                            <span>Profile</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/Dashboard" class="sidebar-link">
-                            <i class="lni lni-dashboard"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/login" class="sidebar-link">
-                            <i class="lni lni-enter"></i>
-                            <span>Login/Register</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/transactions" class="sidebar-link">
-                            <i class="lni lni-write"></i>
-                            <span>Transactions</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/budget" class="sidebar-link">
-                            <i class="lni lni-calculator-alt"></i>
-                            <span>Budget</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/goals" class="sidebar-link">
-                            <i class="lni lni-target-revenue"></i>
-                            <span>Goals</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="/analytics" class="sidebar-link">
-                            <i class="lni lni-graph"></i>
-                            <span>Analytics</span>
-                        </a>
-                    </li>
-                </ul>
+                {% if session["user_id"] %}
+                    <ul class="sidebar-nav">
+                        <li class="sidebar-item">
+                            <a href="#" class="sidebar-link"> <!--User profile layout-->
+                                <i class="lni lni-user"></i>
+                                <span>Profile</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/Dashboard" class="sidebar-link">
+                                <i class="lni lni-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/transactions" class="sidebar-link">
+                                <i class="lni lni-write"></i>
+                                <span>Transactions</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/budget" class="sidebar-link">
+                                <i class="lni lni-calculator-alt"></i>
+                                <span>Budget</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/goals" class="sidebar-link">
+                                <i class="lni lni-target-revenue"></i>
+                                <span>Goals</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href="/analytics" class="sidebar-link">
+                                <i class="lni lni-graph"></i>
+                                <span>Analytics</span>
+                            </a>
+                        </li>
+                    </ul>
+                {% else %}
+                    <ul class="sidebar-nav"> 
+                        <li class="sidebar-item">
+                            <a href="/login" class="sidebar-link">
+                                <i class="lni lni-enter"></i>
+                                <span>Login/Register</span>
+                            </a>
+                        </li>
+                    </ul>
+                {% endif %}
                 <div class="sidebar-footer">
                     <a href="/logout" class="sidebar-link">
                         <i class="lni lni-exit"></i>

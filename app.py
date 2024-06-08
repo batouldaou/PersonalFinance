@@ -3,13 +3,12 @@ from flask_login import login_required
 from flask_session import Session
 from flask_caching import Cache
 from urllib.parse import urlencode, quote_plus
-import datetime
-import pytz
 import sqlite3
 from authlib.integrations.flask_client import OAuth
 import os
 from dotenv import load_dotenv
-from define_tables import *
+from create_tables import CreateTables
+from helpers import apology
  
 
 load_dotenv()
@@ -29,6 +28,7 @@ config = {
 }
 app.config.from_mapping(config)
 
+
 cache = Cache(app)
 Session(app)
 oauth = OAuth(app, cache=cache)
@@ -43,16 +43,17 @@ auth0 = oauth.register(
 )
 
 #-- DATABASE --
-connection = sqlite3.connect("budget.db")
+connection = sqlite3.connect("budget.db", check_same_thread=False)
 db = connection.cursor()
+create_table = CreateTables(db)
+create_table.initialize_tables()
+
 
 
 @app.route('/')
-@cache.cached(timeout=50) 
 def home():
     user = session.get('user')
-    return render_template("layout.html", session=user)
-
+    return render_template("layout.html", session=user) #later change it to overview or something else with title
 
 
 @app.route('/login')
@@ -65,16 +66,31 @@ def login():
     
 @app.route('/callback', methods=["GET", "POST"]) #because this is only user id if we want to add gmail then oaut = register('google')
 def callback():
-        token = auth0.authorize_access_token()
-        if session["user"]:
+        try:
+            token = auth0.authorize_access_token()
             session["user"] = token
-            nickname = session["user"]["userinfo"]["nickname"]
-            sub = session["user"]["userinfo"]["sub"]
-            print(f'{type(nickname)} and {type(sub)}')
-            db.execute("INSERT INTO user (NickName, Auth0) VALUES (?, ?)", nickname, sub) #execute try and except becasue there is UNIQUE vlaue and wont allow addition of second
-            return redirect("/")
-        else: 
-            return "No user allowed"
+            if "user" in session:
+                nickname = session["user"]["userinfo"]["nickname"]
+                sub = session["user"]["userinfo"]["sub"]
+                print(f'{type(nickname)} and {type(sub)}')
+            else: 
+                return "No user allowed", 401  # Return a 401 Unauthorized status
+
+            # Fetch users from the database
+            users = db.execute("SELECT auth0 FROM user WHERE auth0 = ?", (sub,)).fetchone()
+            
+            if not users:  # Check if the user is not in the database
+                db.execute("INSERT INTO user (auth0, nick_name) VALUES (?, ?)", (sub, nickname))
+                connection.commit()
+                return "User added successfully", 201  # Return a 201 Created status
+            return redirect('/') # Return a 200 OK status if user exists
+        except Exception as e:
+        # Log the error and return an error response
+            print(f"An error occurred: {e}")
+            return "Internal Server Error", 500  # Return a 500 Internal Server Error status
+    
+            
+            
 
 @app.route('/transaction', methods =["GET","POST"])
 @login_required
@@ -92,12 +108,12 @@ def transaction():
 def logout():
     session.clear()
     logout_url = (
-        "https://" + app.config["AUTH0_DOMAIN"]
+        "https://" + os.getenv("AUTH0_DOMAIN")
         + "/v2/logout?"
         + urlencode(
             {
                 "returnTo": url_for("home", _external=True),
-                "client_id": app.config['AUTH0_CLIENT_ID'],
+                "client_id": os.getenv('AUTH0_CLIENT_ID'),
             },
             quote_via=quote_plus,
         )

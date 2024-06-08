@@ -2,4 +2,5 @@ venv/
 .vscode/
 influx_API.txt
 .env
+enviroment_variable.txt
 
