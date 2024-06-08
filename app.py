@@ -14,7 +14,7 @@ from define_tables import *
 
 load_dotenv()
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', '2b9a31c7d0f2c5e2a7c907a7c5e1d5e2')
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
 
 #Configurations
 config = {
@@ -71,7 +71,7 @@ def callback():
             nickname = session["user"]["userinfo"]["nickname"]
             sub = session["user"]["userinfo"]["sub"]
             print(f'{type(nickname)} and {type(sub)}')
-            db.execute("INSERT INTO user (NickName, Auth0) VALUES (?, ?)", nickname, sub)
+            db.execute("INSERT INTO user (NickName, Auth0) VALUES (?, ?)", nickname, sub) #execute try and except becasue there is UNIQUE vlaue and wont allow addition of second
             return redirect("/")
         else: 
             return "No user allowed"

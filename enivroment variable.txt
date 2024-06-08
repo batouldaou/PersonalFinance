@@ -1,2 +1,0 @@
-enivroment variable
-export INFLUXDB_TOKEN=PtgcKoPV6aXZpOiYuS_aNijb-hW2dkrKX5aRX6en1AHP3RgFuUVqt8aur7Hb9XS_nqmqqA0rq6rbe5stzaEk7Q==
