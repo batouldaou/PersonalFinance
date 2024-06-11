@@ -167,48 +167,42 @@ def category_manage():
 @app.route('/transactions', methods =["GET","POST"])
 @login_required
 def transactions():
-    form = TransactionForms()
     auth0 = session['user']['userinfo']['sub']
-    print('we are in transactions') # DEBUG
+    user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
+    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id=?", (user_id,))
+    category_name = [dict(row) for row in category_name_query]
+    form = TransactionForms(category_name)
+    
+    if request.form.get("submit") == "delete":
+        transaction_id = request.form.get("transaction_id")
+        db.execute("DELETE FROM transactions WHERE id =? AND user_id = ?", (transaction_id, user_id))
+        connection.commit()
+        return jsonify(success=True)
+        
     if request.method == "GET":
-        trans_data = db.execute("SELECT * FROM transactions_no_cat WHERE user_id =?", (auth0,)).fetchall()
-        list_trans = [dict(row) for row in trans_data]
-        if request.form.get("submit") == "Delete":
-            print("Delete entry") #DEBUG
-            transaction_id = request.form.get("transaction_id")
-            db.execute("DELETE FROM transactions_no_cat WHERE id =? AND user_id = ?", (transaction_id, auth0))
-            connection.commit()
-            print("Deleted the entry") # DEBUG
-        return render_template('transactions.html', form=form, list_trans=list_trans)
-
-    else:
-        if request.form.get("submit") == "Delete":
-            print("Delete entry") # Debug
-            transaction_id = request.form.get("transaction_id")
-            db.execute("DELETE FROM transactions_no_cat WHERE id =? AND user_id = ?", (transaction_id, auth0))
-            connection.commit()
-            print("Deleted the entry") #Debug
-            return redirect(url_for('transactions'))                    
+        trans_data = db.execute("SELECT * FROM transactions JOIN category ON category.user_id = transactions.user_id WHERE transactions.user_id =?", (user_id,)).fetchall()
+        list_transactions = [dict(row) for row in trans_data]       
+        return render_template('transactions.html', form=form, list_trans=list_transactions)
+    else:                        
         amount = float(form.amount.data)
         type = form.type.data
-        #category = form.category.data
-        #category_id = db.execute(" SELECT category_id FROM category WHERE category_name = ?", (category,))
+        category = form.category.data
+        category_id = db.execute("SELECT id FROM category WHERE category_name = ?", (category,)).fetchone()
         date = datetime.datetime.now(pytz.timezone("US/Eastern")).strftime("%Y-%m-%d %H:%M:%S")
         cursor = db.execute('''
-                    INSERT INTO transactions_no_cat (user_id, amount,                                                    
-                                                    date, type)
-                                    VALUES (?,?,?,?)
+                    INSERT INTO transactions (user_id, amount,                                                    
+                                            category_id, date, type)
+                                    VALUES (?,?,?,?,?)
                     
-                ''', (auth0, amount, date, type))
+                ''', (user_id, amount, category_id[0], date, type))
         connection.commit()
-        print('executed well') # Debug  
         new_id = cursor.lastrowid
         new_id = {
             'id':new_id,
             'amount': amount,
+            'category_name': category,
             "type": type,
-            "date": date
-                
+            "date": date      
         }
         return jsonify(new_id)
 
