@@ -5,14 +5,14 @@
 {% block main %}
 <div class="container">
     <h2>Categories</h2>
-    <form action="{{ url_for('category_manage') }}" method="POST" id="category-form">        
-        <div class="form-group">
-            <label for="category_name">New Category</label>
+    <form id="category-form" class="form-inline mb-3">
+        <div class="form-group mr-2">
+            <label for="category_name" class="mr-2">New Category</label>
             <input type="text" class="form-control" id="category_name" name="category_name" required>    
         </div>
         <button type="submit" name="submit" value="add" class="btn btn-primary">Add Category</button>
     </form>
-    <table class="table mt-3">
+    <table class="table table-bordered table-striped mt-3">
         <thead>
             <tr>
                 <th scope="col">#</th>
@@ -23,7 +23,7 @@
         <tbody id="category-table">
             {% for category in categories_list %}
             <tr data-category-id="{{ category.id }}">
-                <td>{{ category.id }}</td>
+                <td>{{ loop.index }}</td>
                 <td>{{ category.category_name }}</td>
                 <td>
                     <button class="btn btn-light btn-edit" data-id="{{ category.id }}" data-name="{{ category.category_name }}">Edit</button>
@@ -71,9 +71,10 @@
                     if (response.error) {
                         alert('Error: ' + response.error);
                     } else {
+                        var rowCount = $('#category-table tr').length + 1;
                         $('#category-table').append(
                             '<tr data-category-id="' + response.id + '">' +
-                                '<td>' + response.id + '</td>' +
+                                '<td>' + rowCount + '</td>' +
                                 '<td>' + response.name + '</td>' +
                                 '<td>' +
                                 '<button class="btn btn-light btn-edit" data-id="' + response.id + '" data-name="' + response.name + '">Edit</button>' +
@@ -91,7 +92,6 @@
             });
         });
 
-
         $('#category-table').on('click', '.btn-delete', function(event) {
             event.preventDefault();
             var row = $(this).closest('tr');
@@ -103,6 +103,10 @@
                 success: function(response) {
                     if (response.success) {
                         row.remove();
+                        // Update display_order for all rows
+                        $('#category-table tr').each(function(index) {
+                            $(this).find('td:first').text(index + 1);
+                        });
                     } else {
                         alert('Delete failed: ' + (response.error || 'Unknown error'));
                     }
@@ -153,5 +157,4 @@
         });
     });
 </script>
-
 {% endblock %}
