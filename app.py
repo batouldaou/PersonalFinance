@@ -1,19 +1,25 @@
 from flask import Flask, jsonify, url_for, render_template, redirect, request, session, flash
-from flask_login import login_required
+from flask_login import login_required, LoginManager, UserMixin, login_user
 from flask_session import Session
 from flask_caching import Cache
 from urllib.parse import urlencode, quote_plus
 import sqlite3
+import datetime 
+import pytz
 from authlib.integrations.flask_client import OAuth
 import os
 from dotenv import load_dotenv
 from create_tables import CreateTables
 from helpers import apology
+from forms import TransactionForms
  
 
 load_dotenv()
 app = Flask(__name__)
+app.debug = True
 app.secret_key = os.getenv('FLASK_SECRET_KEY')
+login_manager = LoginManager()
+
 
 #Configurations
 config = {
@@ -26,12 +32,14 @@ config = {
     "AUTHO0_CLIENT_SECRET": os.getenv('AUTH0_CLIENT_SECRET'),
     "AUTHO0_DOMAIN": os.getenv('AUTH0_DOMAIN')
 }
+
 app.config.from_mapping(config)
-
-
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 cache = Cache(app)
 Session(app)
 oauth = OAuth(app, cache=cache)
+
 auth0 = oauth.register(
     'auth0',
     client_id=os.getenv('AUTH0_CLIENT_ID'),
@@ -44,24 +52,41 @@ auth0 = oauth.register(
 
 #-- DATABASE --
 connection = sqlite3.connect("budget.db", check_same_thread=False)
+connection.row_factory = sqlite3.Row
 db = connection.cursor()
 create_table = CreateTables(db)
 create_table.initialize_tables()
 
 
+#Define the creation of the tables
+class User(UserMixin):
+    def __init__(self, id, auth0):
+        self.id = id
+        self.auth0 = auth0
 
 @app.route('/')
 def home():
     user = session.get('user')
+    if user:
+        print(f'session:{user}')
+    else:
+        print ('no user')
     return render_template("layout.html", session=user) #later change it to overview or something else with title
 
 
 @app.route('/login')
 def login():
-    render_template("login.html")
     return auth0.authorize_redirect(
         redirect_uri=url_for("callback", _external=True)
     )
+    
+
+@login_manager.user_loader
+def load_user(user_id):
+    user = db.execute("SELECT id, auth0 FROM user WHERE id = ?", (user_id,)).fetchone()
+    if user:
+        return User(id=user[0], auth0=user[1])
+    return None
       
     
 @app.route('/callback', methods=["GET", "POST"]) #because this is only user id if we want to add gmail then oaut = register('google')
@@ -73,33 +98,119 @@ def callback():
                 nickname = session["user"]["userinfo"]["nickname"]
                 sub = session["user"]["userinfo"]["sub"]
                 print(f'{type(nickname)} and {type(sub)}')
+                
+                 # Fetch users from the database
+                users = db.execute("SELECT id FROM user WHERE auth0 = ?", (sub,)).fetchone()            
+                if not users:  # Check if the user is not in the database
+                    db.execute("INSERT INTO user (auth0, nick_name) VALUES (?, ?)", (sub, nickname))
+                    connection.commit()
+                user_obj = User(id=users[0], auth0=sub)
+                login_user(user_obj)
+                print('redirecting to home')
+                return redirect(url_for('home')) # Return a 200 OK status if user exists
             else: 
-                return "No user allowed", 401  # Return a 401 Unauthorized status
-
-            # Fetch users from the database
-            users = db.execute("SELECT auth0 FROM user WHERE auth0 = ?", (sub,)).fetchone()
-            
-            if not users:  # Check if the user is not in the database
-                db.execute("INSERT INTO user (auth0, nick_name) VALUES (?, ?)", (sub, nickname))
-                connection.commit()
-                return "User added successfully", 201  # Return a 201 Created status
-            return redirect('/') # Return a 200 OK status if user exists
+                return "No user allowed", 401  # Return a 401 Unauthorized status           
         except Exception as e:
         # Log the error and return an error response
             print(f"An error occurred: {e}")
             return "Internal Server Error", 500  # Return a 500 Internal Server Error status
     
             
-            
-
-@app.route('/transaction', methods =["GET","POST"])
+@app.route('/category_manage', methods =['GET', 'POST'])
 @login_required
-def transaction():
-    if request.method == "GET":
-        return render_template("transaction.html")
-    else:
-        return redirect('/overview')
+def category_manage():
+    auth0 = session['user']['userinfo']['sub']
+    user_id = db.execute("SELECT id FROM user WHERE auth0 =?", (auth0, )).fetchone()
+    if request.method == 'POST':
+        category_name = request.form.get("category_name") # Error handled with required attribute
+        action = request.form.get("submit")
+        category_id = request.form.get("category_id")
+        if action == "add":        
+            if category_name:
+                try:
+                    cursor = db.execute("INSERT INTO category (category_name, user_id) VALUES (?,?) ", (category_name, user_id[0]))
+                    connection.commit()
+                    new_id = cursor.lastrowid
+                    new_category = {
+                        'id': new_id,
+                        "name": category_name                
+                    }
+                    return jsonify(new_category) 
+                except Exception as e:
+                    return  jsonify({"error": str(e)})  
+        elif action == "delete":
+            if category_id:
+               try:
+                    print(f"Attempting to delete category_id: {category_id} for user_id: {user_id[0]}")
+                    db.execute("DELETE FROM category WHERE id = ? AND user_id = ?", (category_id, user_id[0]))
+                    connection.commit()
+                    return jsonify(success=True)
+               except Exception as e:
+                    print(f"Error deleting category: {e}")
+                    return jsonify(success=False, error=str(e))
+        elif action =="edit":
+            if category_id and category_name:
+                try:
+                    print(f"Attempting to edit category_id: {category_id} to new name: {category_name} for user_id: {user_id[0]}")
+                    db.execute("UPDATE category SET category_name = ? WHERE id = ? AND user_id = ?", (category_name, category_id, user_id[0]))
+                    connection.commit()
+                    return jsonify(id=category_id, name=category_name)
+                except Exception as e:
+                    print(f"Error editing category: {e}")
+                    return jsonify(success=False, error=str(e))                
+    categories_data = db.execute("SELECT id, category_name FROM category WHERE user_id = ?", (user_id[0],))                
+    categories_list = [dict(row) for row in categories_data]
+    return render_template('category_manage.html', categories_list=categories_list)
 
+             
+
+@app.route('/transactions', methods =["GET","POST"])
+@login_required
+def transactions():
+    form = TransactionForms()
+    auth0 = session['user']['userinfo']['sub']
+    print('we are in transactions') # DEBUG
+    if request.method == "GET":
+        trans_data = db.execute("SELECT * FROM transactions_no_cat WHERE user_id =?", (auth0,)).fetchall()
+        list_trans = [dict(row) for row in trans_data]
+        if request.form.get("submit") == "Delete":
+            print("Delete entry") #DEBUG
+            transaction_id = request.form.get("transaction_id")
+            db.execute("DELETE FROM transactions_no_cat WHERE id =? AND user_id = ?", (transaction_id, auth0))
+            connection.commit()
+            print("Deleted the entry") # DEBUG
+        return render_template('transactions.html', form=form, list_trans=list_trans)
+
+    else:
+        if request.form.get("submit") == "Delete":
+            print("Delete entry") # Debug
+            transaction_id = request.form.get("transaction_id")
+            db.execute("DELETE FROM transactions_no_cat WHERE id =? AND user_id = ?", (transaction_id, auth0))
+            connection.commit()
+            print("Deleted the entry") #Debug
+            return redirect(url_for('transactions'))                    
+        amount = float(form.amount.data)
+        type = form.type.data
+        #category = form.category.data
+        #category_id = db.execute(" SELECT category_id FROM category WHERE category_name = ?", (category,))
+        date = datetime.datetime.now(pytz.timezone("US/Eastern")).strftime("%Y-%m-%d %H:%M:%S")
+        cursor = db.execute('''
+                    INSERT INTO transactions_no_cat (user_id, amount,                                                    
+                                                    date, type)
+                                    VALUES (?,?,?,?)
+                    
+                ''', (auth0, amount, date, type))
+        connection.commit()
+        print('executed well') # Debug  
+        new_id = cursor.lastrowid
+        new_id = {
+            'id':new_id,
+            'amount': amount,
+            "type": type,
+            "date": date
+                
+        }
+        return jsonify(new_id)
 
 @app.route('/overview') #here they see there income, expenses, and a small bubble that mentions budget 
 
@@ -123,6 +234,8 @@ def logout():
         
 
 if __name__ == "__main__":
+    app.jinja_env.auto_reload = True
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.run(debug=True)
 
 '''
