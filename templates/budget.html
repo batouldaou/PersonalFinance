@@ -8,13 +8,14 @@
     <section id="description">
          Assign the desired percentage of your income to your personalized category spending list. 
     </section>
-    {% if get_flashed_messages() %}
-            <header>
+    {% with messages = get_flashed_messages() %}
+            {% if messages %}
                 <div class="alert alert-primary mb-0 text-center" role="alert">
-                    {{ get_flashed_messages() | join(" ") }}
+                    {{ messages | join(" ") }}
                 </div>
-            </header>
-    {% endif %}
+            {% endif %}
+    {% endwith %}
+        
     <table class="table table-striped">
         <thead>
             <tr>

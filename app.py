@@ -180,7 +180,12 @@ def transactions():
         return jsonify(success=True)
         
     if request.method == "GET":
-        trans_data = db.execute("SELECT * FROM transactions JOIN category ON category.user_id = transactions.user_id WHERE transactions.user_id =?", (user_id,)).fetchall()
+        trans_data = db.execute('''SELECT *
+                                    FROM transactions 
+                                    JOIN category 
+                                    ON category.user_id = transactions.user_id 
+                                        AND category.id = transactions.category_id 
+                                    WHERE transactions.user_id = ?''', (user_id,)).fetchall()
         list_transactions = [dict(row) for row in trans_data]       
         return render_template('transactions.html', form=form, list_trans=list_transactions)
     else:                        
@@ -215,29 +220,41 @@ def budget():
     category_name_query = db.execute("SELECT category_name FROM category WHERE user_id=?", (user_id,))
     category_name = [dict(row) for row in category_name_query]
     form = BudgetForm(category_name)
+    list_budget = db.execute('''
+                                    SELECT budget_percent, budget_amount, category_name
+                                        FROM budget
+                                        JOIN category 
+                                        ON category.id = budget.category_id 
+                                            AND budget.user_id = category.user_id
+                                        WHERE budget.user_id = ?
+                                    ''', (user_id,))
+    list_budget = [dict(row) for row in list_budget]
     
-    # Get income
-    total_income = db.execute('''
+    if request.method == 'GET':        
+        return render_template('budget.html', form=form, list_budget=list_budget)
+    else:
+        action = request.form.get("submit")
+        if action == "add" or "edit" :
+            # Get income
+            total_income = db.execute('''
                                         SELECT SUM(amount) 
                                             FROM transactions 
                                             WHERE type = ? 
                                                 AND user_id = ?                           
-                                    ''', ('income', user_id)).fetchone()[0]
-    if not total_income:
-        flash("Please add income value first.")
-        return jsonify({'redirect': url_for('transactions')})
-
-    if request.method == 'POST':
-        action = request.form.get("submit")
-        if action == "add" or "edit" :
+                                    ''', ('Income', user_id)).fetchone()[0]
+            if not total_income:
+                flash("Please add income value first.")
+                return jsonify({'error': "Please add income value first."})
             budget_percent = float(form.percentage.data)
             budget_amount = (budget_percent/100)*total_income
             
             # Check total percentage before allowing addition of new budget 
             max_percent = 100
-            total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id))
-            if total_percent[0] > max_percent:
-                return flash("All the income is divided")
+            total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id)).fetchone()[0]
+            if total_percent > max_percent:
+                flash("All the income is divided")
+                return jsonify({'error': "All the income is divided"})
+            
             
             if action == "add":
                 category_name = form.category.data
@@ -275,16 +292,7 @@ def budget():
             connection.commit()
             return jsonify({'success': True})          
         
-    list_budget = db.execute('''
-                                SELECT budget_percent, budget_amount, category_name
-                                    FROM budget
-                                    JOIN category 
-                                    ON category.id = budget.category_id 
-                                        AND budget.user_id = category.user_id
-                                    WHERE budget.user_id = ?
-                                ''', (user_id,))
-    list_budget = [dict(row) for row in list_budget]
-    return render_template('budget.html', form=form, list_budget=list_budget)
+   
 
 
 @app.route('/logout')
