@@ -1,4 +1,5 @@
-#Define the creation of the tables
+       
+        
 class CreateTables():
     '''
         No physical meaning - created to make life easier
@@ -15,6 +16,7 @@ class CreateTables():
         self.create_users()
         self.create_category()
         self.create_transactions()
+        self.create_transaction_nocat()
         self.create_budget()      
         self.create_goals()
         self.create_overview()
@@ -24,7 +26,8 @@ class CreateTables():
     def create_users(self):
         self.db.execute( ''' 
                         CREATE TABLE IF NOT EXISTS user  (
-                                    auth0 TEXT PRIMARY KEY UNIQUE,
+                                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                    auth0 TEXT  UNIQUE,
                                     nick_name TEXT NOT NULL,
                                     current_cash NUMERIC NOT NULL DEFAULT 0
                                     )
@@ -32,25 +35,40 @@ class CreateTables():
 
 
     def create_category(self):
-        self.db.execute(" CREATE TABLE IF NOT EXISTS category (id INTEGER PRIMARY KEY AUTOINCREMENT, category_name TEXT NOT NULL)")
-        
-        
+        self.db.execute('''
+                        CREATE TABLE IF NOT EXISTS category (
+                                        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                                        category_name TEXT NOT NULL UNIQUE,
+                                        user_id INTEGER NOT NULL,
+                                        FOREIGN KEY (user_id) REFERENCES user(id))
+                        ''')
+       
     def create_transactions(self):
         self.db.execute('''
                     CREATE TABLE IF NOT EXISTS transactions (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id TEXT NOT NULL,
+                        user_id INTEGER NOT NULL,
                         amount REAL,
                         category_id INTEGER,
                         date TEXT,
                         type TEXT,
-                        FOREIGN KEY (user_id) REFERENCES user(auth0),
+                        FOREIGN KEY (user_id) REFERENCES user(id),
                         FOREIGN KEY (category_id) REFERENCES category(id)
                         )
                         ''')
-
-
- 
+        
+    
+    def create_transaction_nocat(self):
+        self.db.execute('''
+                    CREATE TABLE IF NOT EXISTS transactions_no_cat (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        amount REAL,            
+                        date TEXT,
+                        type TEXT,
+                        FOREIGN KEY (user_id) REFERENCES user(id)
+                        )
+                        ''')
 
 
     def create_budget(self):
@@ -59,7 +77,7 @@ class CreateTables():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL,
                     category_id INTEGER,
-                    FOREIGN KEY (user_id) REFERENCES user(auth0),
+                    FOREIGN KEY (user_id) REFERENCES user(id),
                     FOREIGN KEY (category_id) REFERENCES category(id)             
                     )
                     ''')
@@ -73,7 +91,7 @@ class CreateTables():
                         goal_name TEXT,
                         goal_amount REAL,
                         set_contribution REAL,
-                        FOREIGN KEY (user_id) REFERENCES user(auth0)
+                        FOREIGN KEY (user_id) REFERENCES user(id)
                         )
                         ''')
         
@@ -81,10 +99,10 @@ class CreateTables():
     def create_overview(self):
         self.db.execute('''
                     CREATE TABLE IF NOT EXISTS overview(
-                        user_id TEXT NOT NULL,
+                        user_id INTEGER NOT NULL,
                         transactions_id INTEGER,
                         budget_id INTEGER,
-                        FOREIGN KEY (user_id) REFERENCES user(auth0),
+                        FOREIGN KEY (user_id) REFERENCES user(id),
                         FOREIGN KEY (budget_id) REFERENCES budget(id),
                         FOREIGN KEY (transactions_id) REFERENCES transactions(id)
                         )
