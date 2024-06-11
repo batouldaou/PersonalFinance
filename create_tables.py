@@ -16,7 +16,6 @@ class CreateTables():
         self.create_users()
         self.create_category()
         self.create_transactions()
-        self.create_transaction_nocat()
         self.create_budget()      
         self.create_goals()
         self.create_overview()
@@ -55,21 +54,8 @@ class CreateTables():
                         FOREIGN KEY (user_id) REFERENCES user(id),
                         FOREIGN KEY (category_id) REFERENCES category(id)
                         )
-                        ''')
-        
+                        ''')      
     
-    def create_transaction_nocat(self):
-        self.db.execute('''
-                    CREATE TABLE IF NOT EXISTS transactions_no_cat (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        amount REAL,            
-                        date TEXT,
-                        type TEXT,
-                        FOREIGN KEY (user_id) REFERENCES user(id)
-                        )
-                        ''')
-
 
     def create_budget(self):
         self.db.execute('''
