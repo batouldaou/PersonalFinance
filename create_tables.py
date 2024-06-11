@@ -63,6 +63,8 @@ class CreateTables():
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id TEXT NOT NULL,
                     category_id INTEGER,
+                    budget_percent REAL,
+                    budget_amount REAL,
                     FOREIGN KEY (user_id) REFERENCES user(id),
                     FOREIGN KEY (category_id) REFERENCES category(id)             
                     )
