@@ -11,7 +11,7 @@ import os
 from dotenv import load_dotenv
 from create_tables import CreateTables
 from forms import TransactionForm, BudgetForm, CategoryForm
-import pandas
+#from helpers import budget_pie_chart, budget_track_bar
 import matplotlib.pyplot as plt
  
 
@@ -152,7 +152,7 @@ def category_manage():
                     return jsonify(success=True)
                except Exception as e:
                     print(f"Error deleting category: {e}")
-                    return jsonify(success=False, error=str(e))
+                    return jsonify(success=False, error=str(e)) # What we need to do to understand why budget doesnt save
         elif action =="edit":
             if category_id and category_name:
                 try:
@@ -184,9 +184,10 @@ def get_categories():
 @app.route('/transactions', methods =["GET","POST"])
 @login_required
 def transactions():
+    initial_type = "Income"
     auth0 = session['user']['userinfo']['sub']
     user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
-    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id = ?", (user_id,)).fetchall()
+    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id = ? AND type =?", (user_id,initial_type)).fetchall()
     category_name = [dict(row) for row in category_name_query]
     form = TransactionForm(category_name)
     
@@ -267,10 +268,11 @@ def budget():
             if not total_income:
                 flash("Please add income value first.")
                 return jsonify({'error': "Please add income value first."})
-            budget_percent = float(form.percentage.data)
-            budget_amount = (budget_percent/100)*total_income 
-                  
+            
             if action == "add":
+                budget_percent = float(form.percentage.data)
+                budget_amount = (budget_percent/100)*total_income 
+                  
                 max_percent = 100
                 total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id,)).fetchone()[0]
                 if (total_percent+budget_percent) > max_percent:
@@ -292,13 +294,19 @@ def budget():
                                         ''', (user_id, budget_percent, budget_amount, category_id[0]))
                     connection.commit()
                     new_id = cursor.lastrowid
-                    new_id = {
+                    new_budget = {
                         'budget_percent':budget_percent,
                         'budget_amount': budget_amount,
                         'category_name': category_name
                     }
-                    return jsonify(new_id)
+                    categories_with_budget.add(category_name)
+                    categories_without_budget = [{'category_name': name} for name in all_category_names if name not in categories_with_budget]
+
+                    return jsonify(new_budget=new_budget, categories_without_budget=categories_without_budget)
+                    
             else:
+                budget_percent = float(request.form.get("budget_percent"))
+                budget_amount = (budget_percent/100)*total_income    
                 budget_id = request.form.get("budget_id")
                 db.execute('''
                             UPDATE budget
@@ -314,12 +322,18 @@ def budget():
                 return jsonify(updated_entry) 
                                
         elif request.form.get("submit") == "delete":
-            budget_id = request.form.get("budget_id")
-            db.execute("DELETE FROM budget WHERE id = ? AND user_id = ?", (budget_id, user_id))
+            budget_id = request.form.get("budget_id")            
+            category_name_query = db.execute("SELECT category.category_name FROM category, budget WHERE budget.id = ? AND category.id = budget.category_id", (budget_id,)).fetchone()
+            category_name = category_name_query['category_name'] if category_name_query else None
+            db.execute("DELETE FROM budget WHERE id =? AND user_id = ?", (budget_id, user_id))
             connection.commit()
-            return jsonify({'success': True})          
-        
-   
+            if category_name:
+                categories_with_budget.discard(category_name)
+                categories_without_budget = [{'category_name': name} for name in all_category_names if name not in categories_with_budget]
+                return jsonify(success=True, categories_without_budget=categories_without_budget)   
+            return jsonify(success=True)
+    
+
 
 
 @app.route('/logout')

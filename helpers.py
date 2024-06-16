@@ -56,15 +56,16 @@ def budget_pie_chart(user_id):
     
     
 def budget_track_bar(user_id):
+    type = 'Expense'
     df_track = pd.read_sql(''' 
                             SELECT SUM(budget.budget_amount) AS budget_amount, category.category_name AS category_name
                             FROM budget
                             JOIN category
                             ON budget.category_id = category.id
-                            WHERE budget.user_id = ?
+                            WHERE budget.user_id = ? AND category.type = ?
                             GROUP BY category.category_name
                             
-                           ''', engine, params=(user_id,))
+                           ''', engine, params=(user_id, type))
     
     df_transac = pd.read_sql('''
                                 SELECT SUM(transactions.amount) AS trans, category.category_name AS category_name

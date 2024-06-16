@@ -8,14 +8,13 @@
     <section id="description">
         <p> Assign the desired percentage of your income to your personalized category spending list.</p>
         <p> One budget per expense category </p>
-
     </section>
     {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert alert-primary mb-0 text-center" role="alert">
-                    {{ messages | join(" ") }}
-                </div>
-            {% endif %}
+        {% if messages %}
+            <div class="alert alert-primary mb-0 text-center" role="alert">
+                {{ messages | join(" ") }}
+            </div>
+        {% endif %}
     {% endwith %}
         
     <table class="table table-striped">
@@ -29,14 +28,15 @@
             </tr>
         </thead>
         <tbody id="budget-table">
-             {% for budget in list_budget %}
+            {% for budget in list_budget %}
                 <tr data-budget-id="{{ budget["id"] }}">
                     <td>{{ loop.index }}</td>
                     <td>{{ budget["category_name"] }}</td>
-                    <td>{{ budget["budget_percent"] }}</td>
+                    <td class="budget-percent">{{ budget["budget_percent"] }}</td>
                     <td>{{ budget["budget_amount"] }}</td>
                     <td>
                         <button class="btn btn-light btn-edit" data-id="{{budget["id"] }}" data-percent="{{ budget.budget_percent }}">Edit</button>
+                        <button class="btn btn-success btn-save" data-id="{{ budget.id }}" style="display:none;">Save</button>
                         <form action="{{ url_for('budget') }}" method="POST" style="display:inline;">
                             {{ form.hidden_tag() }}
                             <input type="hidden" name="budget_id" value="{{ budget["id"] }}">
@@ -44,7 +44,7 @@
                         </form>                   
                     </td>
                 </tr>
-             {% endfor %}
+            {% endfor %}
             <tr id="form-row">
                 <form action="{{ url_for('budget') }}" id="budget-form" method="POST">
                     {{ form.hidden_tag() }}
@@ -59,34 +59,23 @@
             </tr>
         </tbody>
     </table>
-
-    <div id="edit-modal" class="modal" tabindex="-1" role="dialog" style="display: none;">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Budget</h5>
-                    <button type="button" class="close" id="edit-cancel" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="edit-budget_percent-form">
-                        <div class="form-group">
-                            <label for="edit_budget_percent">Budget Percent</label>
-                            <input type="text" class="form-control" id="edit_budget_percent" name="budget_percent" required>
-                            <input type="hidden" id="edit_budget_id" name="budget_id">
-                        </div>
-                        <button type="submit" class="btn btn-secondary">Save Changes</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
     $(document).ready(function() {
+        function updateCategoryOptions(categories) {
+            var categorySelect = $('#form-row select[name="category"]');
+            categorySelect.empty();
+            if (categories.length === 0) {
+                categorySelect.append(new Option("No categories available", "", false, false));
+            } else {
+                categories.forEach(function(category) {
+                    categorySelect.append(new Option(category.category_name, category.category_name));
+                });
+            }
+        }
+
         $('#budget-form').on('submit', function(event) {
             event.preventDefault();
             $.ajax({
@@ -100,22 +89,26 @@
                         alert('Error: ' + response.error);
                     } else {
                         var rowCount = $('#budget-table tr').length;
+                        var newBudget = response.new_budget;
                         $('#budget-table').append(
-                            '<tr data-budget-id="' + response.id + '">' +
+                            '<tr data-budget-id="' + newBudget.id + '">' +
                                 '<td>' + rowCount + '</td>' +
-                                '<td>' + response.category_name + '</td>' +
-                                '<td>' + response.budget_percent + '</td>' +
-                                '<td>' + response.budget_amount + '</td>' +
+                                '<td>' + newBudget.category_name + '</td>' +
+                                '<td class="budget-percent">' + newBudget.budget_percent + '</td>' +
+                                '<td>' + newBudget.budget_amount + '</td>' +
                                 '<td>' + 
-                                '<button class="btn btn-light btn-edit" data-id="' + response.id + '" data-percent="' + response.budget_percent + '">Edit</button>' +
+                                '<button class="btn btn-light btn-edit" data-id="' + newBudget.id + '" data-percent="' + newBudget.budget_percent + '">Edit</button>' +
+                                '<button class="btn btn-success btn-save" data-id="' + newBudget.id + '" style="display:none;">Save</button>' +
                                 '<form action="{{ url_for('budget') }}" method="POST" style="display:inline;">'+
-                                '<input type="hidden" name="budget_id" value="' + response.id + '">' +
-                                '<button type="submit" name="submit" value="Delete" data-id="' + response.id + '" class="btn btn-danger btn-delete">Delete</button>' +
+                                '<input type="hidden" name="budget_id" value="' + newBudget.id + '">' +
+                                '<button type="submit" name="submit" value="Delete" data-id="' + newBudget.id + '" class="btn btn-danger btn-delete">Delete</button>' +
                                 '</form></td>' +
                             '</tr>'
                         );
                         // Clear form fields
                         $('#budget-form')[0].reset();
+                        // Update category dropdown
+                        updateCategoryOptions(response.categories_without_budget);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -139,6 +132,8 @@
                         $('#budget-table tr').each(function(index) {
                             $(this).find('td:first').text(index + 1);
                         });
+                        // Update category dropdown
+                        updateCategoryOptions(response.categories_without_budget);
                     } else {
                         alert('Delete failed: ' + (response.error || 'Unknown error'));
                     }
@@ -149,38 +144,33 @@
             });
         });
 
-        // Show edit form
+        // Inline edit budget percent
         $('#budget-table').on('click', '.btn-edit', function() {
             var row = $(this).closest('tr');
             var budgetId = $(this).data('id');
-            var budgetPercent = $(this).data('percent');
-            $('#edit_budget_id').val(budgetId);
-            $('#edit_budget_percent').val(budgetPercent);
-            $('#edit-modal').show();
+            var budgetPercent = row.find('.budget-percent').text();
+            row.find('.budget-percent').html('<input type="text" name="budget_percent" class="form-control edit-budget-percent" value="' + budgetPercent + '">');
+            $(this).hide();
+            row.find('.btn-save').show();
         });
 
-        // Cancel edit
-        $('#edit-cancel').on('click', function() {
-            $('#edit-modal').hide();
-            $('#edit-budget_percent-form')[0].reset();
-        });
-
-        // Edit budget percent
-        $('#edit-budget_percent-form').on('submit', function(event) {
-            event.preventDefault();
+        // Save edited budget percent
+        $('#budget-table').on('click', '.btn-save', function() {
+            var row = $(this).closest('tr');
+            var budgetId = $(this).data('id');
+            var newBudgetPercent = row.find('.edit-budget-percent').val();
             $.ajax({
                 url: "{{ url_for('budget') }}",
                 method: "POST",
-                data: $(this).serialize() + '&submit=edit',
+                data: { budget_id: budgetId, budget_percent: newBudgetPercent, submit: 'edit' },
                 success: function(response) {
                     if (response.error) {
                         alert('Error: ' + response.error);
                     } else {
-                        var row = $('#budget-table').find('tr[data-budget-id="' + response.id + '"]');
-                        row.find('td').eq(2).text(response.budget_percent);
+                        row.find('.budget-percent').text(response.budget_percent);
                         row.find('td').eq(3).text(response.budget_amount);
-                        $('#edit-modal').hide();
-                        $('#edit-budget_percent-form')[0].reset();
+                        row.find('.btn-save').hide();
+                        row.find('.btn-edit').show();
                     }
                 },
                 error: function(xhr, status, error) {

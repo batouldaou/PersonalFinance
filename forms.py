@@ -18,7 +18,7 @@ class TransactionForm(FlaskForm):
         super(TransactionForm, self).__init__(*args)        
         self.type.choices =  [('Income', 'Income'), ('Expense', 'Expense')]
         if categories:
-            self.category.choices = [category["category_name"] for category in categories]
+            self.category.choices = [(category["category_name"], category["category_name"]) for category in categories]
 
 
 class BudgetForm(FlaskForm):
