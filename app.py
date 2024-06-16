@@ -222,7 +222,7 @@ def budget():
     category_name = [dict(row) for row in category_name_query]
     form = BudgetForm(category_name)
     list_budget = db.execute('''
-                                    SELECT budget_percent, budget_amount, category_name
+                                    SELECT budget.id, budget_percent, budget_amount, category_name
                                         FROM budget
                                         JOIN category 
                                         ON category.id = budget.category_id 
@@ -235,7 +235,7 @@ def budget():
         return render_template('budget.html', form=form, list_budget=list_budget)
     else:
         action = request.form.get("submit")
-        if action == "add" or "edit" :
+        if action in ['add', 'edit'] :
             # Get income
             total_income = db.execute('''
                                         SELECT SUM(amount) 
@@ -247,17 +247,13 @@ def budget():
                 flash("Please add income value first.")
                 return jsonify({'error': "Please add income value first."})
             budget_percent = float(form.percentage.data)
-            budget_amount = (budget_percent/100)*total_income
-            
-            # Check total percentage before allowing addition of new budget 
-            max_percent = 100
-            total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id)).fetchone()[0]
-            if total_percent > max_percent:
-                flash("All the income is divided")
-                return jsonify({'error': "All the income is divided"})
-            
-            
+            budget_amount = (budget_percent/100)*total_income        
             if action == "add":
+                max_percent = 100
+                total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id,)).fetchone()[0]
+                if (total_percent+budget_percent) > max_percent:
+                    flash("All the income is divided")
+                    return jsonify({'error': "All the income is divided"})
                 category_name = form.category.data
                 category_id = db.execute("SELECT id FROM category WHERE category_name =?", (category_name, )).fetchone()
                 cursor = db.execute('''
@@ -285,8 +281,7 @@ def budget():
                     'budget_percent': budget_percent,
                     'budget_amount': budget_amount
                 }
-                return jsonify(updated_entry)
-                    
+                return jsonify(updated_entry)                    
         elif request.form.get("submit") == "delete":
             budget_id = request.form.get("budget_id")
             db.execute("DELETE FROM budget WHERE id = ? AND user_id = ?", (budget_id, user_id))

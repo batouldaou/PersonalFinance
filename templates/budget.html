@@ -34,8 +34,12 @@
                     <td>{{ budget["budget_percent"] }}</td>
                     <td>{{ budget["budget_amount"] }}</td>
                     <td>
-                        <button class="btn btn-light btn-edit" data-id="{{ budget.id }}" data-percent="{{ budget.budget_percent }}">Edit</button>
-                        <button class="btn btn-danger btn-delete" data-id="{{ budget.id }}">Delete</button>
+                        <button class="btn btn-light btn-edit" data-id="{{budget["id"] }}" data-percent="{{ budget.budget_percent }}">Edit</button>
+                        <form action="{{ url_for('budget') }}" method="POST" style="display:inline;">
+                            {{ form.hidden_tag() }}
+                            <input type="hidden" name="budget_id" value="{{ budget["id"] }}">
+                            <button type="submit" name="submit" value="Delete" class="btn btn-danger btn-delete" data-id="{{ budget["id"] }}">Delete</button>
+                        </form>                   
                     </td>
                 </tr>
              {% endfor %}
@@ -100,10 +104,12 @@
                                 '<td>' + response.category_name + '</td>' +
                                 '<td>' + response.budget_percent + '</td>' +
                                 '<td>' + response.budget_amount + '</td>' +
-                                '<td>' +
+                                '<td>' + 
                                 '<button class="btn btn-light btn-edit" data-id="' + response.id + '" data-percent="' + response.budget_percent + '">Edit</button>' +
-                                '<button class="btn btn-danger btn-delete" data-id="' + response.id + '">Delete</button>' +
-                                '</td>' +
+                                '<form action="{{ url_for('budget') }}" method="POST" style="display:inline;">'+
+                                '<input type="hidden" name="budget_id" value="' + response.id + '">' +
+                                '<button type="submit" name="submit" value="Delete" data-id="' + response.id + '" class="btn btn-danger btn-delete">Delete</button>' +
+                                '</form></td>' +
                             '</tr>'
                         );
                         // Clear form fields
