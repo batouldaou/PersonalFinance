@@ -37,8 +37,8 @@
                 <form action="{{ url_for('transactions') }}" id="transaction-form" method="POST">
                     {{ form.hidden_tag() }}
                     <td>{{ form.amount(class="form-control", size=32) }}</td>
-                    <td>{{ form.type(class="form-control") }}</td>
-                    <td>{{ form.category(class="form-control") }}</td>
+                    <td>{{ form.type(class="form-control", id="type-select") }}</td>
+                    <td>{{ form.category(class="form-control", id="category-select") }}</td>
                     <td colspan="2">
                         <button type="submit" name="submit" value="Add" class="btn btn-primary">Add</button>
                     </td>
@@ -51,6 +51,25 @@
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script>
     $(document).ready(function() {
+        $('#type-select').change(function() {
+            var selectedType = $(this).val();
+            $.ajax({
+                url: "{{ url_for('get_categories') }}",
+                method: "GET",
+                data: { type: selectedType },
+                success: function(response) {
+                    var categorySelect = $('#category-select');
+                    categorySelect.empty();
+                    response.categories.forEach(function(category) {
+                        categorySelect.append(new Option(category.category_name, category.id));
+                    });
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        });
+
         $('#transaction-form').on('submit', function(event) {
             event.preventDefault();
             $.ajax({

@@ -167,14 +167,26 @@ def category_manage():
     categories_list = [dict(row) for row in categories_data]
     return render_template('category_manage.html', categories_list=categories_list, form=form)
 
-             
+
+@app.route('/get_categories', methods=['GET'])
+@login_required
+def get_categories():
+    auth0 = session['user']['userinfo']['sub']
+    user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
+    selected_type = request.args.get('type')
+    if selected_type:
+        categories_query = db.execute("SELECT id, category_name FROM category WHERE user_id = ? AND type = ?", (user_id, selected_type)).fetchall()
+        categories = [dict(row) for row in categories_query]
+        return jsonify({'categories': categories})
+    return jsonify({'categories': []})
+                
 
 @app.route('/transactions', methods =["GET","POST"])
 @login_required
 def transactions():
     auth0 = session['user']['userinfo']['sub']
     user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
-    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id=?", (user_id,))
+    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id = ?", (user_id,)).fetchall()
     category_name = [dict(row) for row in category_name_query]
     form = TransactionForm(category_name)
     
@@ -220,21 +232,26 @@ def transactions():
 @app.route('/budget', methods= ['GET', 'POST']) #here they see there income, expenses, and a small bubble that mentions budget 
 @login_required
 def budget():
+    type = 'Expense'
     auth0 = session['user']['userinfo']['sub']
     user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
-    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id=?", (user_id,))
-    category_name = [dict(row) for row in category_name_query]
-    form = BudgetForm(category_name)
+    all_category_name_query = db.execute("SELECT category_name FROM category WHERE user_id=? AND type= ?", (user_id, type)).fetchall() # the complete category list
+    categories_with_budget_query = db.execute("SELECT category_name FROM category, budget WHERE category.id = budget.category_id AND budget.user_id =?", (user_id,)).fetchall() # the categories with budget set
+    
+    all_category_names = {row['category_name'] for row in all_category_name_query}
+    categories_with_budget = {row['category_name'] for row in categories_with_budget_query}
+    categories_without_budget = [{'category_name': name} for name in all_category_names if name not in categories_with_budget]
+
+    form = BudgetForm(categories_without_budget)    
     list_budget = db.execute('''
                                     SELECT budget.id, budget_percent, budget_amount, category_name
                                         FROM budget
                                         JOIN category 
                                         ON category.id = budget.category_id 
                                             AND budget.user_id = category.user_id
-                                        WHERE budget.user_id = ?
-                                    ''', (user_id,))
-    list_budget = [dict(row) for row in list_budget]
-    
+                                        WHERE budget.user_id = ? AND type=?
+                                    ''', (user_id,type))
+    list_budget = [dict(row) for row in list_budget]    
     if request.method == 'GET':        
         return render_template('budget.html', form=form, list_budget=list_budget)
     else:
@@ -251,27 +268,36 @@ def budget():
                 flash("Please add income value first.")
                 return jsonify({'error': "Please add income value first."})
             budget_percent = float(form.percentage.data)
-            budget_amount = (budget_percent/100)*total_income        
+            budget_amount = (budget_percent/100)*total_income 
+                  
             if action == "add":
                 max_percent = 100
                 total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id,)).fetchone()[0]
                 if (total_percent+budget_percent) > max_percent:
                     flash("All the income is divided")
                     return jsonify({'error': "All the income is divided"})
+                
                 category_name = form.category.data
                 category_id = db.execute("SELECT id FROM category WHERE category_name =?", (category_name, )).fetchone()
-                cursor = db.execute('''
-                                        INSERT INTO budget (user_id, budget_percent, budget_amount, category_id)
-                                            VALUES (?,?,?,?)
-                                    ''', (user_id, budget_percent, budget_amount, category_id[0]))
-                connection.commit()
-                new_id = cursor.lastrowid
-                new_id = {
-                    'budget_percent':budget_percent,
-                    'budget_amount': budget_amount,
-                    'category_name': category_name
-                }
-                return jsonify(new_id)
+                
+                # Check if budget for that category exists
+                budget_category_exist = db.execute("SELECT id FROM budget WHERE category_id = ?", (category_id)).fetchall()
+                if budget_category_exist:
+                    flash("Budget exists for that category")
+                    return jsonify({'error': "Budget exists for that category"})
+                else:
+                    cursor = db.execute('''
+                                            INSERT INTO budget (user_id, budget_percent, budget_amount, category_id)
+                                                VALUES (?,?,?,?)
+                                        ''', (user_id, budget_percent, budget_amount, category_id[0]))
+                    connection.commit()
+                    new_id = cursor.lastrowid
+                    new_id = {
+                        'budget_percent':budget_percent,
+                        'budget_amount': budget_amount,
+                        'category_name': category_name
+                    }
+                    return jsonify(new_id)
             else:
                 budget_id = request.form.get("budget_id")
                 db.execute('''
@@ -285,7 +311,8 @@ def budget():
                     'budget_percent': budget_percent,
                     'budget_amount': budget_amount
                 }
-                return jsonify(updated_entry)                    
+                return jsonify(updated_entry) 
+                               
         elif request.form.get("submit") == "delete":
             budget_id = request.form.get("budget_id")
             db.execute("DELETE FROM budget WHERE id = ? AND user_id = ?", (budget_id, user_id))
