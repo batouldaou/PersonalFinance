@@ -39,6 +39,7 @@ class CreateTables():
                                         id INTEGER PRIMARY KEY AUTOINCREMENT, 
                                         category_name TEXT NOT NULL UNIQUE,
                                         user_id INTEGER NOT NULL,
+                                        type TEXT,
                                         FOREIGN KEY (user_id) REFERENCES user(id))
                         ''')
        
@@ -50,7 +51,7 @@ class CreateTables():
                         amount REAL,
                         category_id INTEGER,
                         date TEXT,
-                        type TEXT,
+                        type TEXT NOT NULL,
                         FOREIGN KEY (user_id) REFERENCES user(id),
                         FOREIGN KEY (category_id) REFERENCES category(id)
                         )

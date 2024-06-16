@@ -10,7 +10,7 @@ from authlib.integrations.flask_client import OAuth
 import os
 from dotenv import load_dotenv
 from create_tables import CreateTables
-from forms import TransactionForm, BudgetForm
+from forms import TransactionForm, BudgetForm, CategoryForm
 import pandas
 import matplotlib.pyplot as plt
  
@@ -122,19 +122,23 @@ def callback():
 def category_manage():
     auth0 = session['user']['userinfo']['sub']
     user_id = db.execute("SELECT id FROM user WHERE auth0 =?", (auth0, )).fetchone()
+    form = CategoryForm()
     if request.method == 'POST':
-        category_name = request.form.get("category_name") # Error handled with required attribute
+        category_name = form.category_name.data # Error handled with required attribute
         action = request.form.get("submit")
         category_id = request.form.get("category_id")
-        if action == "add":        
+        type = form.type.data
+
+        if action == "Add":        
             if category_name:
                 try:
-                    cursor = db.execute("INSERT INTO category (category_name, user_id) VALUES (?,?) ", (category_name, user_id[0]))
+                    cursor = db.execute("INSERT INTO category (category_name, user_id, type) VALUES (?,?,?) ", (category_name, user_id[0], type))
                     connection.commit()
                     new_id = cursor.lastrowid
                     new_category = {
                         'id': new_id,
-                        "name": category_name                
+                        "name": category_name ,
+                        "type": type              
                     }
                     return jsonify(new_category) 
                 except Exception as e:
@@ -153,15 +157,15 @@ def category_manage():
             if category_id and category_name:
                 try:
                     print(f"Attempting to edit category_id: {category_id} to new name: {category_name} for user_id: {user_id[0]}")
-                    db.execute("UPDATE category SET category_name = ? WHERE id = ? AND user_id = ?", (category_name, category_id, user_id[0]))
+                    db.execute("UPDATE category SET category_name = ?, type = ? WHERE id = ? AND user_id = ?", (category_name, type, category_id, user_id[0]))
                     connection.commit()
-                    return jsonify(id=category_id, name=category_name)
+                    return jsonify(id=category_id, name=category_name, type=type)
                 except Exception as e:
                     print(f"Error editing category: {e}")
                     return jsonify(success=False, error=str(e))                
-    categories_data = db.execute("SELECT id, category_name FROM category WHERE user_id = ?", (user_id[0],))                
+    categories_data = db.execute("SELECT id, category_name, type FROM category WHERE user_id = ?", (user_id[0],))                
     categories_list = [dict(row) for row in categories_data]
-    return render_template('category_manage.html', categories_list=categories_list)
+    return render_template('category_manage.html', categories_list=categories_list, form=form)
 
              
 
