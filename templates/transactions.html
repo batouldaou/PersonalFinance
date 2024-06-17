@@ -61,7 +61,7 @@
                     var categorySelect = $('#category-select');
                     categorySelect.empty();
                     response.categories.forEach(function(category) {
-                        categorySelect.append(new Option(category.category_name, category.id));
+                        categorySelect.append(new Option(category.category_name));
                     });
                 },
                 error: function(xhr, status, error) {

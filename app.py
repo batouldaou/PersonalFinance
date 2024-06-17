@@ -183,11 +183,10 @@ def get_categories():
 
 @app.route('/transactions', methods =["GET","POST"])
 @login_required
-def transactions():
-    initial_type = "Income"
+def transactions():  
     auth0 = session['user']['userinfo']['sub']
     user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
-    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id = ? AND type =?", (user_id,initial_type)).fetchall()
+    category_name_query = db.execute("SELECT category_name FROM category WHERE user_id = ? ", (user_id,)).fetchall()
     category_name = [dict(row) for row in category_name_query]
     form = TransactionForm(category_name)
     
@@ -275,6 +274,7 @@ def budget():
                   
                 max_percent = 100
                 total_percent = db.execute("SELECT SUM(budget_percent) FROM budget WHERE user_id=?", (user_id,)).fetchone()[0]
+                total_percent = 0 if total_percent is None else total_percent
                 if (total_percent+budget_percent) > max_percent:
                     flash("All the income is divided")
                     return jsonify({'error': "All the income is divided"})
@@ -293,7 +293,7 @@ def budget():
                                                 VALUES (?,?,?,?)
                                         ''', (user_id, budget_percent, budget_amount, category_id[0]))
                     connection.commit()
-                    new_id = cursor.lastrowid
+                    new_budget = cursor.lastrowid
                     new_budget = {
                         'budget_percent':budget_percent,
                         'budget_amount': budget_amount,
