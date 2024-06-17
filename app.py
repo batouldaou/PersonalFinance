@@ -11,8 +11,9 @@ import os
 from dotenv import load_dotenv
 from create_tables import CreateTables
 from forms import TransactionForm, BudgetForm, CategoryForm
-#from helpers import budget_pie_chart, budget_track_bar
+from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
+from functions_needed import get_budget_data, get_transaction_data
  
 
 load_dotenv()
@@ -20,7 +21,7 @@ app = Flask(__name__)
 app.debug = True
 app.secret_key = os.getenv('FLASK_SECRET_KEY')
 login_manager = LoginManager()
-
+engine = create_engine('sqlite:///budget.db')
 
 #Configurations
 config = {
@@ -334,6 +335,21 @@ def budget():
             return jsonify(success=True)
     
 
+@app.route('/api/budget/<int:user_id>')
+def api_budget(user_id):
+    df_budget = get_budget_data(user_id, engine)
+    return jsonify(df_budget.to_dict(orient='records'))
+
+
+@app.route('/api/transactions/<int:user_id>')
+def api_transactions(user_id):
+    df_merged = get_transaction_data(user_id,engine)
+    return jsonify(df_merged.to_dict(orient='records'))
+
+
+@app.route('/analytics')
+def analytics():
+    return render_template('analytics.html')
 
 
 @app.route('/logout')
@@ -359,14 +375,3 @@ if __name__ == "__main__":
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.run(debug=True)
 
-'''
--- typical response from user = token.json()
-{ {'user': {'userinfo': {'sub': 'auth0|665dea8b7ab006f6e2700caa', 
-'nickname': 'batoul.daou', 'name': 'batoul.daou@tuhh.de', 
-'picture': 'https://s.gravatar.com/avatar/53ef17278efa7eb45b43d9555925da8f?s=480&r=pg&d=https%3A%2F%2Fcdn.auth0.com%2Favatars%2Fba.png',
-'updated_at': '2024-06-03T16:49:48.370Z', 
-'email': 'batoul.daou@tuhh.de', 
-'email_verified': True}}}>
-
-
-'''

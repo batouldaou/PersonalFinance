@@ -1,0 +1,114 @@
+{% extends 'layout.html' %}
+
+{% block title %} Budget {% endblock %}
+
+{% block main %}
+<div class="container">
+    <h2>Financial Analysis</h2>
+    <div class="chart-container">
+        <div class="chart-wrapper">
+            <canvas id="budgetPieChart"></canvas>
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="budgetTrackBarChart"></canvas>
+        </div>
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<script>
+    const userId = 1;  // Replace with dynamic user ID as needed
+
+    fetch(`/api/budget/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(item => item.category_name);
+            const values = data.map(item => item.budget_percent);
+            
+            const ctx = document.getElementById('budgetPieChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#c0d8fc', '#e1e8f9', '#f2f5fa', '#fafbfe'] // Update as needed
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    label += Math.round(context.raw) + '%';
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        });
+
+    fetch(`/api/transactions/${userId}`)
+        .then(response => response.json())
+        .then(data => {
+            const labels = data.map(item => item.category_name);
+            const budgetValues = data.map(item => item.budget_amount);
+            const transactionValues = data.map(item => item.trans);
+
+            const ctx = document.getElementById('budgetTrackBarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Budget',
+                            data: budgetValues,
+                            backgroundColor: '#c0d8fc' // Update to match your CSS
+                        },
+                        {
+                            label: 'Transactions',
+                            data: transactionValues,
+                            backgroundColor: '#e1e8f9' // Update to match your CSS
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    }
+                }
+            });
+        });
+</script>
+<style>
+.chart-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.chart-wrapper {
+    width: 500px;
+    height: 500px;
+}
+</style>
+{% endblock %}
