@@ -1,7 +1,7 @@
-# Personal Finance Tracker
+# Personal Finance Manager Web Application
 #### Video Demo:  <URL HERE>
 #### Description:
-# Personal Finance Manager Web Application
+
 
 ## Overview
 
@@ -43,6 +43,10 @@ A personal finance manager web application created with Flask on Python. The dat
 ## Notes
 
 - **Initial Data Display**: The overview page may initially be empty due to insufficient data. To showcase how the data would look with more entries, a `fake_overview.html` is provided.
+
+## Future Works:
+- **Time-Series**: Time-series for the transactions.
+- **Cloud DataBase**" To make this application suitable for more users.
 
 ## Conclusion
 
