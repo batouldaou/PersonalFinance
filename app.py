@@ -74,9 +74,25 @@ def home():
     user = session.get('user')
     if user:
         print(f'session:{user}')
+        auth0 = session['user']['userinfo']['sub']
+        user_id = db.execute("SELECT id FROM user WHERE auth0 =?", (auth0, )).fetchone()[0]
+        transactions_record = db.execute('''
+                                         SELECT transactions.date, transactions.amount, transactions.type, category.category_name
+                                                FROM transactions
+                                                JOIN category
+                                                ON transactions.category_id = category.id
+                                                WHERE transactions.user_id = ?
+                                                LIMIT 3
+                                         ''',(user_id,)).fetchall()
+        total_income = db.execute("SELECT SUM(amount) FROM transactions WHERE user_id=? AND type=?", (user_id, 'Income')).fetchone()[0]
+        total_expense = db.execute("SELECT SUM(amount) FROM transactions WHERE user_id=? AND type=?", (user_id, 'Expense')).fetchone()[0]
+        total_balance = total_income - total_expense
+        transactions = [dict(row) for row in transactions_record]
+        return render_template("home.html", session=user, transactions=transactions, total_expenses=total_expense, total_balance=total_balance, total_income=total_income) 
     else:
         print ('no user')
-    return render_template("home.html", session=user) #later change it to overview or something else with title
+        return render_template("home.html", session=user)
+    
 
 
 @app.route('/login')
@@ -411,18 +427,6 @@ def overview():
                                     ''',(user_id,)).fetchall()
     if month_difference >=1:
         current_month = (current_datetime + relativedelta(months=1)).replace(day=1).strftime('%Y-%m-%d')
-
-        overview_records = db.execute('''
-                                        SELECT category.type, category.category_name,
-                                                SUM(transactions.amount) AS amount
-                                            FROM transactions, category
-                                            WHERE category.id = transactions.category_id
-                                                AND transactions.user_id = category.user_id
-                                                AND transactions.user_id = ?
-                                                AND transactions.date >= ?
-                                                AND transactions.date < ?
-                                            GROUP BY category.category_name                                      
-                                      ''',(user_id, first_transaction_month, current_month )).fetchall()
         # Check if it works then delete from transactions
         for record in overview_records:
             db.execute('''
