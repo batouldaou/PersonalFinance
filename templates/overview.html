@@ -1,0 +1,113 @@
+{% extends 'layout.html' %}
+
+{% block title %} Overview {% endblock %}
+
+{% block main %}
+<div class="container">
+    <h2>Personal Finance Budget Overview</h2>
+    {% if income_categories or expense_categories %}
+    <div>
+        <h3>Income Categories</h3>
+        <canvas id="incomeChart"></canvas>
+    </div>
+    <div>
+        <h3>Expense Categories</h3>
+        <canvas id="expenseChart"></canvas>
+    </div>
+    <div>
+        <h3>Monthly Overview</h3>
+        <canvas id="monthlyOverviewChart"></canvas>
+    </div>
+    {% else %}
+        <div id="description">
+            <p>Welcome to your personal finance budget overview page. It looks like you haven't recorded any transactions for this month yet. Once you start adding your income and expenses, you'll be able to see detailed trends and insights here.</p>
+            <p>To get started, click on the "Transactions" tab and add your first transaction.</p>
+            <button class="btn btn-primary" onclick="location.href='#'">Add Transaction</button>
+        </div>
+    {% endif %}
+</div>
+<script>
+    {% if income_categories %}
+    // Income Categories Bar Chart
+    const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+    const incomeChart = new Chart(incomeCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ income_categories|map(attribute='category_name')|list|tojson }},
+            datasets: [{
+                label: 'Amount',
+                data: {{ income_categories|map(attribute='amount')|list|tojson }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+
+    {% if expense_categories %}
+    // Expense Categories Bar Chart
+    const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+    const expenseChart = new Chart(expenseCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ expense_categories|map(attribute='category_name')|list|tojson }},
+            datasets: [{
+                label: 'Amount',
+                data: {{ expense_categories|map(attribute='amount')|list|tojson }},
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+
+    {% if income_records and expense_records %}
+    // Monthly Overview Line Chart
+    const monthlyOverviewCtx = document.getElementById('monthlyOverviewChart').getContext('2d');
+    const monthlyOverviewChart = new Chart(monthlyOverviewCtx, {
+        type: 'line',
+        data: {
+            labels: {{ income_records|map(attribute='month')|list|tojson }},
+            datasets: [{
+                label: 'Total Income',
+                data: {{ income_records|map(attribute='total_amount')|list|tojson }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                fill: false
+            }, {
+                label: 'Total Expenses',
+                data: {{ expense_records|map(attribute='total_amount')|list|tojson }},
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 1,
+                fill: false
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

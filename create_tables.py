@@ -87,12 +87,12 @@ class CreateTables():
         
     def create_overview(self):
         self.db.execute('''
-                    CREATE TABLE IF NOT EXISTS overview(
-                        user_id INTEGER NOT NULL,
-                        transactions_id INTEGER,
-                        budget_id INTEGER,
-                        FOREIGN KEY (user_id) REFERENCES user(id),
-                        FOREIGN KEY (budget_id) REFERENCES budget(id),
-                        FOREIGN KEY (transactions_id) REFERENCES transactions(id)
-                        )
-                        ''')
+                    CREATE TABLE IF NOT EXISTS monthly_overview (
+                        user_id INTEGER,
+                        type TEXT,
+                        category_name TEXT,
+                        amount REAL,
+                        month TEXT,
+                        PRIMARY KEY (user_id, type, category_name, month)
+                    )
+                ''')

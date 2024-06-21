@@ -1,0 +1,134 @@
+{%extends 'layout.html'%}
+{% block title %} Overview {% endblock %}
+
+{% block main %}
+        <!-- Main Content -->
+        <div class="main">
+            <div class="container">
+                <h1>Overview</h1>
+                <div>
+                    <h2>Income Categories</h2>
+                    <canvas id="incomeChart"></canvas>
+                </div>
+                <div>
+                    <h2>Expense Categories</h2>
+                    <canvas id="expenseChart"></canvas>
+                </div>
+                <div>
+                    <h2>Monthly Overview</h2>
+                    <canvas id="monthlyOverviewChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> 
+    <script>
+      
+        const incomeCategoriesExample = ["Salary", "Freelance", "Investments"];
+        const incomeAmountsExample = [5000, 2000, 1500];
+
+        const expenseCategoriesExample = ["Groceries", "Rent", "Utilities", "Entertainment"];
+        const expenseAmountsExample = [600, 1200, 300, 400];
+
+        const monthsExample = ["January", "February", "March", "April"];
+        const totalIncomeExample = [7000, 7500, 7200, 6800];
+        const totalExpensesExample = [2500, 2700, 2600, 2400];
+
+        // Log to ensure data is loaded
+        console.log("Income Categories:", incomeCategoriesExample);
+        console.log("Income Amounts:", incomeAmountsExample);
+        console.log("Expense Categories:", expenseCategoriesExample);
+        console.log("Expense Amounts:", expenseAmountsExample);
+        console.log("Months:", monthsExample);
+        console.log("Total Income:", totalIncomeExample);
+        console.log("Total Expenses:", totalExpensesExample);
+
+        // Ensure the Chart.js library is loaded
+        if (Chart) {
+            console.log("Chart.js is loaded");
+        } else {
+            console.error("Chart.js is not loaded");
+        }
+
+        // Income Categories Bar Chart
+        const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+        const incomeChart = new Chart(incomeCtx, {
+            type: 'bar',
+            data: {
+                labels: incomeCategoriesExample,
+                datasets: [{
+                    label: 'Amount',
+                    data: incomeAmountsExample,
+                    backgroundColor: ['#c0d8fc'],
+                    borderColor: ['#c0d8fc'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                barPercentage: 0.5, // Default is 0.9, lower value makes bars thinner
+                categoryPercentage: 0.5 //Default is 0.8, lower value increases space between the bars
+            }
+        });
+
+        // Expense Categories Bar Chart
+        const expenseCtx = document.getElementById('expenseChart').getContext('2d');
+        const expenseChart = new Chart(expenseCtx, {
+            type: 'bar',
+            data: {
+                labels: expenseCategoriesExample,
+                datasets: [{
+                    label: 'Amount',
+                    data: expenseAmountsExample,
+                    backgroundColor: ['#c0d8fc'],
+                    borderColor: ['#c0d8fc'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                barPercentage: 0.5, // Default is 0.9, lower value makes bars thinner
+                categoryPercentage: 0.5
+            }
+        });
+
+        // Monthly Overview Line Chart
+        const monthlyOverviewCtx = document.getElementById('monthlyOverviewChart').getContext('2d');
+        const monthlyOverviewChart = new Chart(monthlyOverviewCtx, {
+            type: 'line',
+            data: {
+                labels: monthsExample,
+                datasets: [{
+                    label: 'Total Income',
+                    data: totalIncomeExample,
+                    backgroundColor: '#c0d8fc',
+                    borderColor: '#c0d8fc',
+                    borderWidth: 1,
+                    fill: false
+                }, {
+                    label: 'Total Expenses',
+                    data: totalExpensesExample,
+                    backgroundColor:  'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 1,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+{%endblock%}

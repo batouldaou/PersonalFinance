@@ -4,7 +4,7 @@ from flask_session import Session
 from flask_caching import Cache
 from urllib.parse import urlencode, quote_plus
 import sqlite3
-import datetime 
+from datetime import datetime 
 import pytz
 from authlib.integrations.flask_client import OAuth
 import os
@@ -14,6 +14,8 @@ from forms import TransactionForm, BudgetForm, CategoryForm
 from sqlalchemy import create_engine
 import matplotlib.pyplot as plt
 from functions_needed import get_budget_data, get_transaction_data
+from dateutil.relativedelta import relativedelta
+
  
 
 load_dotenv()
@@ -351,6 +353,102 @@ def api_transactions(user_id):
 def analytics():
     return render_template('analytics.html')
 
+
+@app.route('/overview')
+def overview():
+    '''
+        View overview data per month
+    '''
+    auth0 = session['user']['userinfo']['sub']
+    user_id = db.execute("SELECT id FROM user WHERE auth0=?", (auth0,)).fetchone()[0]
+    first_transaction_record = db.execute("SELECT date FROM transactions WHERE user_id = ? ORDER BY date ASC ", (user_id,)).fetchone()[0]
+    first_transaction_datetime = datetime.strptime(first_transaction_record, '%Y-%m-%d %H:%M:%S')
+    first_transaction_month = first_transaction_datetime.strftime('%Y-%m-%d')
+    current_datetime = datetime.now()
+    current_month = current_datetime.strftime('%Y-%m-%d')
+
+    month_difference = -first_transaction_datetime.month + current_datetime.month 
+        # Get the overview records from transactions 
+    overview_records = db.execute('''
+                                    SELECT category.type, category.category_name,
+                                            SUM(transactions.amount) AS amount
+                                        FROM transactions, category
+                                        WHERE category.id = transactions.category_id
+                                            AND transactions.user_id = category.user_id
+                                            AND transactions.user_id = ?
+                                        GROUP BY category.category_name                                      
+                                    ''',(user_id,)).fetchall()
+    if month_difference >=1:
+        current_month = (current_datetime + relativedelta(months=1)).replace(day=1).strftime('%Y-%m-%d')
+
+        overview_records = db.execute('''
+                                        SELECT category.type, category.category_name,
+                                                SUM(transactions.amount) AS amount
+                                            FROM transactions, category
+                                            WHERE category.id = transactions.category_id
+                                                AND transactions.user_id = category.user_id
+                                                AND transactions.user_id = ?
+                                                AND transactions.date >= ?
+                                                AND transactions.date < ?
+                                            GROUP BY category.category_name                                      
+                                      ''',(user_id, first_transaction_month, current_month )).fetchall()
+        # Check if it works then delete from transactions
+        for record in overview_records:
+            db.execute('''
+                INSERT INTO monthly_overview (user_id, type, category_name, amount, month)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, type, category_name, month) DO UPDATE SET amount = excluded.amount
+            ''', (user_id, record['type'], record['category_name'], record['amount'], current_month))
+            connection.commit()
+            
+        db.execute('''
+            DELETE FROM transactions
+            WHERE user_id = ?
+            AND date >= ?
+            AND date < ?
+        ''', (user_id, first_transaction_month, current_month))
+    
+    income_records = db.execute('''
+        SELECT month, SUM(amount) as total_amount
+        FROM monthly_overview
+        WHERE user_id = ? AND type = ?
+        GROUP BY month
+        ORDER BY month
+    ''', (user_id,'Income')).fetchall()
+    income_records = [dict(row) for row in income_records]
+
+    expense_records = db.execute('''
+        SELECT month, SUM(amount) as total_amount
+        FROM monthly_overview
+        WHERE user_id = ? AND type = ?
+        GROUP BY month
+        ORDER BY month
+    ''', (user_id,'Expense')).fetchall()
+    expense_records = [dict(row) for row in expense_records]
+
+    income_categories = db.execute('''
+        SELECT category_name, SUM(amount) as amount
+        FROM monthly_overview
+        WHERE user_id = ? AND type = ?
+        GROUP BY category_name
+    ''', (user_id,'Income')).fetchall()
+    income_categories = [dict(row) for row in income_categories]
+    
+    expense_categories = db.execute('''
+        SELECT category_name, SUM(amount) as amount
+        FROM monthly_overview
+        WHERE user_id = ? AND type = ?
+        GROUP BY category_name
+    ''', (user_id,'Expense')).fetchall()
+    expense_categories = [dict(row) for row in expense_categories]
+
+    return render_template("fake_overview.html", 
+                           income_records=income_records, 
+                           expense_records=expense_records,
+                           income_categories=income_categories,
+                           expense_categories=expense_categories)
+        
+    
 
 @app.route('/logout')
 def logout():
