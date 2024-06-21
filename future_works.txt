@@ -1,0 +1,4 @@
+Make it ready for large number of users:
+1. Inlcude CDM for the images instead of saving them here
+2. Use time-series for transactions table
+3. Incorporate KI

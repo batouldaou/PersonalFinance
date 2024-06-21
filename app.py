@@ -68,6 +68,7 @@ class User(UserMixin):
         self.id = id
         self.auth0 = auth0
 
+
 @app.route('/')
 def home():
     user = session.get('user')
@@ -75,7 +76,7 @@ def home():
         print(f'session:{user}')
     else:
         print ('no user')
-    return render_template("layout.html", session=user) #later change it to overview or something else with title
+    return render_template("home.html", session=user) #later change it to overview or something else with title
 
 
 @app.route('/login')
@@ -118,8 +119,38 @@ def callback():
         # Log the error and return an error response
             print(f"An error occurred: {e}")
             return "Internal Server Error", 500  # Return a 500 Internal Server Error status
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    user_info = session["user"]["userinfo"]
+    auth0 = user_info['sub']
+    nickname = user_info["nickname"]
+    user_picture = user_info["picture"]
+    email = user_info["email"]
+    user = {'name':nickname, 'email': email, 'username': nickname, 'picture': user_picture}
+    return render_template("profile.html", user=user)
+
+
+@app.route('/edit_profile', methods=['GET', 'POST'])
+def edit_profile():   
+    user_info = session["user"]["userinfo"]
+    nickname = user_info["nickname"]
+    user_picture = user_info["picture"]
+    email = user_info["email"]
+    user_data = {'name':nickname, 'email': email, 'username': nickname, 'picture': user_picture}
+    if request.method == 'POST':
+        user_info["nickname"] = request.form['name']
+        user_info["email"] = request.form['email']
+        user_info["nickname"] = request.form['username']
+        flash('Profile updated successfully')
+        return redirect(url_for('profile'))
     
-            
+    return render_template('edit_profile.html', user=user_data)
+    
+    
+    
 @app.route('/category_manage', methods =['GET', 'POST'])
 @login_required
 def category_manage():
