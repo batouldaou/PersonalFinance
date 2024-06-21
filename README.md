@@ -15,29 +15,28 @@ A personal finance manager web application created with Flask on Python. The dat
 
 ### Categories
 
-- **Customizable Categories**: Users can create and edit categories to track income (e.g., Jobs, Stocks, Side Hustles) and expenses.
-- **Dynamic Category List**: The category list dynamically changes based on the type of transaction (income or expense) selected.
+- **Customizable Categories**: Users can create, add, edit, and delete categories. Categories are added with two types: income and expense which helps to track the different categories of income (e.g., Jobs, Stocks, Side Hustles) and expenses for the user.
 
 ### Transactions
 
-- **Add Transactions**: Users can add transactions by specifying the amount and the related category.
+- **Add Transactions**: Users can add transactions by specifying the amount and the related category. The user can then delete the transaction, or edit the transaction category, type, or amount as they deem fit. 
 - **Transaction Types**: Users select the type of transaction (income or expense), which updates the category list accordingly.
+
 
 ### Budget Management
 
-- **Set Budgets**: Users can navigate to the budget page to set a budget for each expense category.
-- **Budget Calculation**: Budgets are defined as a percentage of the total income, and the application calculates and displays the budget amounts.
+- **Set Budgets**: Users can navigate to the budget page to set a budget for each expense category. User is allowed to set one budget per category more than that would induce an error. 
+- **Budget Calculation**: Budgets are defined as a percentage of the total income, and the application calculates and displays the budget amounts. If the total percentage of the budget has reached 100, an error message would appear that "All the income is divided" and the user can no longer add more as that would mean the user has reached the full amount of their income. 
 - **Edit Budgets**: Budgets can be modified, updated, or deleted as needed.
 
 ### Analysis
 
-- **Visual Analysis**: The analysis page visually represents budget distribution across different categories.
-- **Bar Chart**: Displays the budget amount per category alongside the current total spending.
-- **Budget Tracking**: Helps users keep track of their budget and spending per category.
+- **Visual Analysis**: The analysis page visually represents budget distribution across different categories with the help of a pie chart. The values are seen as percentages on the pie chart.
+- **Budget Tracking**: Displays the budget amount per category alongside the current total spending. This helps user track the budget that they have set and the current total spending for that category for that particular time.
 
 ### Overview
 
-- **Monthly Overview**: Renders a summary of total income, total expenses per month over time, and total income and expenses per category for the current month.
+- **Monthly Overview**: Renders a summary of the total income, the total expenses per month over time, and the total income and expenses per category for the current month.
 - **Dashboard**: Displays the current month's total income, expenses, and balance, along with recent transactions.
 
 ## Notes
